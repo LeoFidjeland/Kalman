@@ -5,14 +5,25 @@ gpsfile = 'NMEA000.csv';
 sensorfile = 'Sensor000.csv';
 
 gpsfid = fopen(gpsfile, 'r');
-sensorfid = fopen(gpsfile, 'r');
+sensorfid = fopen(sensorfile, 'r');
+
+
+millis = 0;
+
+
+%% First state, start with first GPS position
+
+millis = str2num(fgetl(gpsfid))
+for i = 1:2
+    tline = fgetl(gpsfid);
+    [data, ierr] = nmealineread(tline);
+    data
+    %datestr(data.BODCTime, 'dddd mmm dd yyyy HH:MM:SS.FFF')
+end
+%%
 
 
 
-
-
-
-tline = fgetl(gpsfid);
 i=0;
 while (ischar(tline) && i<100000)
     

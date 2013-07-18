@@ -10,6 +10,7 @@ function [data,ierr]  =  nmealineread(nline)
 %  NMEALINEREAD currently supports the following NMEA sentences:
 %                   $GPGGA  Global positioning system fixed data
 %                   $GPGLL  Geographic poition [latitude, longitude & time]
+%                   $GPRMC  Recommended Minimum [position,velocity]
 %                   $GPVTG  Course over ground and ground speed
 %                   $GPZDA  UTC date / time and local time zone offset
 %                   $SDDBS  Echo sounder data
@@ -88,13 +89,13 @@ switch case_t
 %
 %  Read global positioning system fixed data
 %
+    data.type = 'GGA';
     t_time  =  nline(1:find(nline  ==  ',',1,'first') - 1);
     if(isempty(t_time))
       data.BODCTime  =  NaN;
     else
-      t_time  =  t_time(1:6);
-      data.BODCTime  =  datenum(t_time,'HHMMSS') - ...
-        floor(datenum(t_time,'HHMMSS'));
+      data.BODCTime  =  datenum(t_time,'HHMMSS.FFF') - ...
+        floor(datenum(t_time,'HHMMSS.FFF'));
     end
     clear t_time;
     nline  =  nline(find(nline  ==  ',',1,'first') + 1:end);
@@ -114,10 +115,28 @@ switch case_t
       data.longitude  =  data.longitude  *  -1;
     end
     clear t_lat;
+    nline  =  nline(find(nline  ==  ',',1,'first') + 1:end);
+    data.quality  =  nline(1:find(nline  ==  ',',1,'first') - 1);
+    data.quality  =  str2num(data.quality);
+    nline  =  nline(find(nline  ==  ',',1,'first') + 1:end);
+    data.satellites  =  nline(1:find(nline  ==  ',',1,'first') - 1);
+    data.satellites  =  str2num(data.satellites);
+    nline  =  nline(find(nline  ==  ',',1,'first') + 1:end);
+    data.hdilution  =  nline(1:find(nline  ==  ',',1,'first') - 1);
+    data.hdilution  =  str2double(data.hdilution);
+    nline  =  nline(find(nline  ==  ',',1,'first') + 1:end);
+    data.hMSL  =  nline(1:find(nline  ==  ',',1,'first') - 1);
+    data.hMSL  =  str2double(data.hMSL);
+    nline  =  nline(find(nline  ==  ',',1,'first') + 1:end);
+    nline  =  nline(find(nline  ==  ',',1,'first') + 1:end);
+    data.hWGS  =  nline(1:find(nline  ==  ',',1,'first') - 1);
+    data.hWGS  =  str2double(data.hWGS);
+    
   case 2
 %
 %  Read geographic position [lat/lon] and time
 %
+    data.type = 'GLL';
     t_lat  =  nline(1:find(nline  ==  ',',1,'first') - 1);
     data.latitude  =  str2double(t_lat(1:2)) + ...
       (str2double(t_lat(3:end)) / 60);
@@ -142,10 +161,57 @@ switch case_t
     else
       data.BODCTime  =  NaN;
     end
+  case 5
+%
+% Read recommended minimum
+%
+    data.type = 'RMC';
+    t_time  =  nline(1:find(nline  ==  ',',1,'first') - 1);
+    nline  =  nline(find(nline  ==  ',',1,'first') + 1:end);
+    t_status  =  nline(1:find(nline  ==  ',',1,'first') - 1);
+    data.status = t_status;
+    nline  =  nline(find(nline  ==  ',',1,'first') + 1:end);
+    t_lat  =  nline(1:find(nline  ==  ',',1,'first') - 1);
+    data.latitude  =  ...
+      str2double(t_lat(1:2)) + (str2double(t_lat(3:end))/60);
+    nline  =  nline(find(nline  ==  ',',1,'first') + 1:end);
+    if(nline(1)  ==  'S')
+      data.latitude  =  data.latitude  *  -1;
+    end
+    nline  =  nline(find(nline  ==  ',',1,'first') + 1:end);
+    t_lat  =  nline(1:find(nline  ==  ',',1,'first') - 1);
+    data.longitude  =  ...
+      str2double(t_lat(1:3)) + (str2double(t_lat(4:end))/60);
+    nline  =  nline(find(nline  ==  ',',1,'first') + 1:end);
+    if(nline(1)  ==  'W')
+      data.longitude  =  data.longitude  *  -1;
+    end
+    clear t_lat;
+    nline  =  nline(find(nline  ==  ',',1,'first') + 1:end);
+    data.speed  =  nline(1:find(nline  ==  ',',1,'first') - 1);
+    data.speed  =  str2double(data.speed);
+    nline  =  nline(find(nline  ==  ',',1,'first') + 1:end);
+    t_course  =  nline(1:find(nline  ==  ',',1,'first') - 1);
+    if(isempty(t_course))
+      data.truecourse  =  NaN;
+    else
+      data.truecourse  =  str2double(t_course);
+    end
+    nline  =  nline(find(nline  ==  ',',1,'first') + 1:end);
+    t_date =  nline(1:find(nline  ==  ',',1,'first') - 1);
+    if(isempty(t_time))
+      data.BODCTime  =  NaN;
+    else
+      data.BODCTime  =  datenum(strcat(t_time,t_date),'HHMMSS.FFFddmmyy');
+    end
+    clear t_time;
+    clear t_date;
+    
   case 6
 %
 %  Read course over ground and ground speed
 %
+    data.type = 'VTG';
     t_course  =  nline(1:find(nline  ==  ',',1,'first') - 1);
     if(isempty(t_course))
       data.truecourse  =  NaN;
@@ -162,6 +228,7 @@ switch case_t
 %
 %  Read UTC Date / Time and Local Time Zone Offset
 %
+    data.type = 'ZDA';
     data.BODCTime  =  (datenum(nline(11:20),'dd,mm,yyyy') + ...
       (datenum(nline(1:6),'HHMMSS') - ...
       floor(datenum(nline(1:6),'HHMMSS'))));
@@ -171,6 +238,7 @@ switch case_t
 %
 %  Read echo sounder data
 %
+    data.type = 'DBS';
     com_mask  =  strfind(nline,',');
     data.depth  =  str2double(...
       nline(com_mask(2) + 1: com_mask(3)-1));

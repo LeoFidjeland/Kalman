@@ -1,4 +1,4 @@
-function [x,y,z] = LLA2ENU(lat,long,alt)
+function [xyz] = LLA2ENU(lat,long,alt)
 %Converts LLA to ECEF
 %   See http://microem.ru/files/2012/08/GPS.G1-X-00006.pdf and https://en.wikipedia.org/wiki/East_north_up#From_ECEF_to_ENU
 
@@ -27,8 +27,5 @@ function [x,y,z] = LLA2ENU(lat,long,alt)
             cosd(enu_ref(4))*cosd(enu_ref(5)) , cosd(enu_ref(4))*sind(enu_ref(5)) , sind(enu_ref(4))];
     
     xyz = DCM * [x_ecef - enu_ref(1), y_ecef - enu_ref(2), z_ecef - enu_ref(3)]';
-    x = xyz(1);
-    y = xyz(2);
-    z = xyz(3);
 end
 
